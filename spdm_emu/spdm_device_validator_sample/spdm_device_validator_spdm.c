@@ -90,6 +90,53 @@ libspdm_return_t spdm_device_receive_message(void *spdm_context,
     return LIBSPDM_STATUS_SUCCESS;
 }
 
+libspdm_return_t spdm_device_send_message_pci_doe_ssd(void *spdm_context,
+                                                      size_t request_size,
+                                                      const void *request,
+                                                      uint64_t timeout)
+{
+    /* check PCI-DOE data alignment */
+    if (request_size % sizeof(uint32_t) != 0)
+    {
+        return LIBSPDM_STATUS_RECEIVE_FAIL;
+    }
+
+    /* write request to PCI-DOE Write Mail Box Register */
+    uint32_t* data = (uint32_t*)request;
+    size_t offset = 0;
+    while (offset < request_size) {
+        m_pci_doe_reg_addr->wmb.value = *data;
+        data += sizeof(uint32_t);
+        offset += sizeof(uint32_t);
+    }
+    /* write PCI-DOE Ctrl Register GO flag */
+    m_pci_doe_reg_addr->ctrl.native.go = 0x1;
+    return LIBSPDM_STATUS_SUCCESS;
+}
+
+libspdm_return_t spdm_device_receive_message_pci_doe_ssd(void *spdm_context,
+                                                         size_t *response_size,
+                                                         void **response,
+                                                         uint64_t timeout)
+{
+    /* check PCI-DOE Status Register data obj ready flag */
+    if (!(m_pci_doe_reg_addr->status.native.data_obj_ready == 0x1))
+    {
+        return LIBSPDM_STATUS_RECEIVE_FAIL;
+    }
+
+    /* read response data from PCI-DOE Read Mail Box Register */
+    uint32_t* data = *response;
+    *response_size = 0;
+    while (m_pci_doe_reg_addr->status.native.data_obj_ready == 0x1) {
+        *data = m_pci_doe_reg_addr->rmb.value;
+        data += sizeof(uint32_t);
+        *response_size += sizeof(uint32_t);
+        m_pci_doe_reg_addr->rmb.value = 0;
+    }
+    return LIBSPDM_STATUS_SUCCESS;
+}
+
 /**
  * Send and receive an DOE message
  *
@@ -105,18 +152,33 @@ libspdm_return_t pci_doe_send_receive_data(const void *pci_doe_context,
                                            size_t request_size, const void *request,
                                            size_t *response_size, void *response)
 {
-    bool result;
-    uint32_t response_code;
+    if (m_use_transport_layer == TRANSPORT_TYPE_PCI_DOE_SSD) {
+        libspdm_return_t status;
+        status = spdm_device_send_message_pci_doe_ssd(NULL, request_size, request, 0);
+        if (status != LIBSPDM_STATUS_SUCCESS) {
+            return status;
+        }
 
-    result = communicate_platform_data(
-        m_socket, SOCKET_SPDM_COMMAND_NORMAL,
-        request, request_size,
-        &response_code, response_size,
-        response);
-    if (!result) {
-        return LIBSPDM_STATUS_RECEIVE_FAIL;
+        status = spdm_device_receive_message_pci_doe_ssd(NULL, response_size, &response, 0);
+        if (status != LIBSPDM_STATUS_SUCCESS) {
+            return status;
+        }
+
+        return LIBSPDM_STATUS_SUCCESS;
+    } else {
+        bool result;
+        uint32_t response_code;
+
+        result = communicate_platform_data(
+            m_socket, SOCKET_SPDM_COMMAND_NORMAL,
+            request, request_size,
+            &response_code, response_size,
+            response);
+        if (!result) {
+            return LIBSPDM_STATUS_RECEIVE_FAIL;
+        }
+        return LIBSPDM_STATUS_SUCCESS;
     }
-    return LIBSPDM_STATUS_SUCCESS;
 }
 
 void *spdm_client_init(void)
@@ -133,8 +195,13 @@ void *spdm_client_init(void)
     spdm_context = m_spdm_context;
     libspdm_init_context(spdm_context);
 
-    libspdm_register_device_io_func(spdm_context, spdm_device_send_message,
-                                    spdm_device_receive_message);
+    if (m_use_transport_layer == TRANSPORT_TYPE_PCI_DOE_SSD) {
+        libspdm_register_device_io_func(spdm_context, spdm_device_send_message_pci_doe_ssd,
+                                        spdm_device_receive_message_pci_doe_ssd);
+    } else {
+        libspdm_register_device_io_func(spdm_context, spdm_device_send_message,
+                                        spdm_device_receive_message);
+    }
 
     if (m_use_transport_layer == SOCKET_TRANSPORT_TYPE_MCTP) {
         libspdm_register_transport_layer_func(
@@ -144,7 +211,8 @@ void *spdm_client_init(void)
             LIBSPDM_TRANSPORT_TAIL_SIZE,
             libspdm_transport_mctp_encode_message,
             libspdm_transport_mctp_decode_message);
-    } else if (m_use_transport_layer == SOCKET_TRANSPORT_TYPE_PCI_DOE) {
+    } else if (m_use_transport_layer == SOCKET_TRANSPORT_TYPE_PCI_DOE ||
+               m_use_transport_layer == TRANSPORT_TYPE_PCI_DOE_SSD) {
         libspdm_register_transport_layer_func(
             spdm_context,
             LIBSPDM_MAX_SPDM_MSG_SIZE,

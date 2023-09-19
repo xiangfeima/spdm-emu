@@ -17,6 +17,12 @@ bool m_send_receive_buffer_acquired = false;
 uint8_t m_send_receive_buffer[LIBSPDM_MAX_SENDER_RECEIVER_BUFFER_SIZE];
 size_t m_send_receive_buffer_size;
 
+uint32_t m_pci_doe_ssd_bus = 0;
+uint32_t m_pci_doe_ssd_reg_offset = 0;
+int m_dev_mem_fd = -1;
+int32_t* m_mapped_pci_addr = NULL;
+PcieDoeReg* m_pci_doe_reg_addr = NULL;
+
 /**
  * Read number of bytes data in blocking mode.
  *

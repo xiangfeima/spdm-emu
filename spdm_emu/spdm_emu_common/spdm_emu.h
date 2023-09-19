@@ -20,8 +20,11 @@
 #include "time.h"
 #include "command.h"
 #include "nv_storage.h"
+#include "samsung_pci_doe_ssd.h"
 
 extern uint32_t m_use_transport_layer;
+extern uint32_t m_pci_doe_ssd_bus;
+extern uint32_t m_pci_doe_ssd_reg_offset;
 extern uint32_t m_use_tcp_handshake;
 extern uint8_t m_use_version;
 extern uint8_t m_use_secured_message_version;

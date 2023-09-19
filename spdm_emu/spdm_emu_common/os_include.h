@@ -40,6 +40,8 @@
 #include "errno.h"
 #include "sys/socket.h"
 #include "arpa/inet.h"
+#include "fcntl.h"
+#include "sys/mman.h"
 typedef int SOCKET;
 #define closesocket(x) close(x)
 #define INVALID_SOCKET (-1)

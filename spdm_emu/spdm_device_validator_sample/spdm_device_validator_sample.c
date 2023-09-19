@@ -31,6 +31,37 @@ bool platform_client_routine(uint16_t port_number)
     size_t response_size;
     libspdm_return_t status;
 
+    if (m_use_transport_layer == TRANSPORT_TYPE_PCI_DOE_SSD) {
+        /* PCI_DOE_SSD, using PCI-DOE register I/O, not socket */
+        result = discover_samsung_pci_doe_ssd(m_pci_doe_ssd_bus, m_pci_doe_ssd_reg_offset);
+        if (!result) {
+            goto pci_doe_ssd_done;
+        }
+
+        m_spdm_context = spdm_client_init ();
+
+        status = pci_doe_init_request ();
+        if (LIBSPDM_STATUS_IS_ERROR(status)) {
+            printf("pci_doe_init_request - %x\n", (uint32_t)status);
+            goto pci_doe_ssd_done;
+        }
+
+        spdm_responder_conformance_test (m_spdm_context, &m_spdm_responder_validator_config);
+        if (m_spdm_context != NULL) {
+            free(m_spdm_context);
+        }
+
+pci_doe_ssd_done:
+        if (m_mapped_pci_addr != NULL && m_mapped_pci_addr != (int32_t*)-1) {
+            munmap(m_mapped_pci_addr, SIZE_OF_PCIE_MMIO_EXTENDED_SPACE);
+        }
+        if (m_dev_mem_fd != -1) {
+            close(m_dev_mem_fd);
+            m_dev_mem_fd = -1;
+        }
+        return true;
+    }
+
     result = init_client(&platform_socket, port_number);
     if (!result) {
 #ifdef _MSC_VER

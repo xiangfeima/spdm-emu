@@ -22,6 +22,7 @@ SET(src_spdm_device_validator_sample
     ${PROJECT_SOURCE_DIR}/spdm_emu/spdm_emu_common/nv_storage.c
     ${PROJECT_SOURCE_DIR}/spdm_emu/spdm_emu_common/pcap.c
     ${PROJECT_SOURCE_DIR}/spdm_emu/spdm_emu_common/support.c
+    ${PROJECT_SOURCE_DIR}/spdm_emu/spdm_emu_common/samsung_pci_doe_ssd.c
 )
 
 SET(spdm_device_validator_sample_LIBRARY
@@ -47,6 +48,10 @@ SET(spdm_device_validator_sample_LIBRARY
     spdm_responder_conformance_test_lib
     common_test_utility_lib
 )
+
+if((TOOLCHAIN STREQUAL "GCC"))
+    add_compile_options(-D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE)
+endif()
 
 if((TOOLCHAIN STREQUAL "KLEE") OR (TOOLCHAIN STREQUAL "CBMC"))
     ADD_EXECUTABLE(spdm_device_validator_sample

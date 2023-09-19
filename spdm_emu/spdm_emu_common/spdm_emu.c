@@ -35,7 +35,9 @@ struct in_addr m_ip_address = { 0x0100007F };
 
 void print_usage(const char *name)
 {
-    printf("\n%s [--trans MCTP|PCI_DOE|TCP|NONE]\n", name);
+    printf("\n%s [--trans MCTP|PCI_DOE|PCI_DOE_SSD|TCP|NONE]\n", name);
+    printf("   [--pci_bus]\n");
+    printf("   [--doe_reg_offset]\n");
     printf("   [--tcp_sub HS|NO_HS]\n");
     printf("   [--ver 1.0|1.1|1.2]\n");
     printf("   [--sec_ver 1.0|1.1]\n");
@@ -186,7 +188,8 @@ value_string_entry_t m_transport_value_string_table[] = {
     { SOCKET_TRANSPORT_TYPE_NONE, "NONE"},
     { SOCKET_TRANSPORT_TYPE_MCTP, "MCTP" },
     { SOCKET_TRANSPORT_TYPE_PCI_DOE, "PCI_DOE" },
-    { SOCKET_TRANSPORT_TYPE_TCP, "TCP"}
+    { SOCKET_TRANSPORT_TYPE_TCP, "TCP"},
+    { TRANSPORT_TYPE_PCI_DOE_SSD, "PCI_DOE_SSD" }
 };
 
 value_string_entry_t m_tcp_subtype_string_table[] = {
@@ -491,6 +494,34 @@ void process_args(char *program_name, int argc, char *argv[])
                 continue;
             } else {
                 printf("invalid --trans\n");
+                print_usage(program_name);
+                exit(0);
+            }
+        }
+
+        if (strcmp(argv[0], "--pci_bus") == 0) {
+            if (argc >= 2) {
+                m_pci_doe_ssd_bus = atoi(argv[1]);
+                printf("pci_bus - 0x%x\n", m_pci_doe_ssd_bus);
+                argc -= 2;
+                argv += 2;
+                continue;
+            } else {
+                printf("invalid --pci_bus\n");
+                print_usage(program_name);
+                exit(0);
+            }
+        }
+
+        if (strcmp(argv[0], "--doe_reg_offset") == 0) {
+            if (argc >= 2) {
+                m_pci_doe_ssd_reg_offset = atoi(argv[1]);
+                printf("doe_reg_offset - 0x%x\n", m_pci_doe_ssd_reg_offset);
+                argc -= 2;
+                argv += 2;
+                continue;
+            } else {
+                printf("invalid --doe_reg_offset\n");
                 print_usage(program_name);
                 exit(0);
             }
