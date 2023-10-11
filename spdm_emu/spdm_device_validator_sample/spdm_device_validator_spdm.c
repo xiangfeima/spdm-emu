@@ -9,6 +9,7 @@
 void *m_spdm_context;
 void *m_scratch_buffer;
 SOCKET m_socket;
+extern FILE *m_log_file; 
 
 bool communicate_platform_data(SOCKET socket, uint32_t command,
                                const uint8_t *send_buffer, size_t bytes_to_send,
@@ -106,11 +107,15 @@ libspdm_return_t spdm_device_send_message_pci_doe_ssd(void *spdm_context,
     size_t offset = 0;
     while (offset < request_size) {
         m_pci_doe_reg_addr->wmb.value = *data;
-        data += sizeof(uint32_t);
+        data += 1;
         offset += sizeof(uint32_t);
     }
     /* write PCI-DOE Ctrl Register GO flag */
     m_pci_doe_reg_addr->ctrl.native.go = 0x1;
+
+    append_pcap_packet_data(NULL, 0, request,
+                                request_size);
+
     return LIBSPDM_STATUS_SUCCESS;
 }
 
@@ -119,6 +124,7 @@ libspdm_return_t spdm_device_receive_message_pci_doe_ssd(void *spdm_context,
                                                          void **response,
                                                          uint64_t timeout)
 {
+    while (m_pci_doe_reg_addr->status.native.data_obj_ready != 0x1 && m_pci_doe_reg_addr->status.native.error == 0) ;
     /* check PCI-DOE Status Register data obj ready flag */
     if (!(m_pci_doe_reg_addr->status.native.data_obj_ready == 0x1))
     {
@@ -130,10 +136,14 @@ libspdm_return_t spdm_device_receive_message_pci_doe_ssd(void *spdm_context,
     *response_size = 0;
     while (m_pci_doe_reg_addr->status.native.data_obj_ready == 0x1) {
         *data = m_pci_doe_reg_addr->rmb.value;
-        data += sizeof(uint32_t);
+        data += 1;
         *response_size += sizeof(uint32_t);
         m_pci_doe_reg_addr->rmb.value = 0;
     }
+
+    append_pcap_packet_data(NULL, 0, *response,
+                                *response_size);
+
     return LIBSPDM_STATUS_SUCCESS;
 }
 

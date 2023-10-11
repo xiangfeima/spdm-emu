@@ -52,6 +52,7 @@ bool platform_client_routine(uint16_t port_number)
         }
 
 pci_doe_ssd_done:
+        close_pcap_packet_file();
         if (m_mapped_pci_addr != NULL && m_mapped_pci_addr != (int32_t*)-1) {
             munmap(m_mapped_pci_addr, SIZE_OF_PCIE_MMIO_EXTENDED_SPACE);
         }

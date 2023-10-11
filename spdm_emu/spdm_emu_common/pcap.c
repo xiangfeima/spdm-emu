@@ -30,6 +30,8 @@ bool open_pcap_packet_file(const char *pcap_file_name)
         pcap_global_header.network = LINKTYPE_MCTP;
     } else if (m_use_transport_layer == SOCKET_TRANSPORT_TYPE_PCI_DOE) {
         pcap_global_header.network = LINKTYPE_PCI_DOE;
+    } else if (m_use_transport_layer == TRANSPORT_TYPE_PCI_DOE_SSD) {
+        pcap_global_header.network = LINKTYPE_PCI_DOE;
     } else {
         return false;
     }
