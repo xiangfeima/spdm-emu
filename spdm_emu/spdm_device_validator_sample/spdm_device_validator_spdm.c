@@ -101,17 +101,20 @@ libspdm_return_t spdm_device_send_message_pci_doe_ssd(void *spdm_context,
     {
         return LIBSPDM_STATUS_RECEIVE_FAIL;
     }
+    if (m_log_file) fprintf(m_log_file, "send-doe (%ld bytes)...\n", request_size);
 
     /* write request to PCI-DOE Write Mail Box Register */
     uint32_t* data = (uint32_t*)request;
     size_t offset = 0;
     while (offset < request_size) {
         m_pci_doe_reg_addr->wmb.value = *data;
+        if (m_log_file) fprintf(m_log_file, "\t -> 0x%08lX : %08X\n", offset, *data);
         data += 1;
         offset += sizeof(uint32_t);
     }
     /* write PCI-DOE Ctrl Register GO flag */
     m_pci_doe_reg_addr->ctrl.native.go = 0x1;
+    if (m_log_file) fprintf(m_log_file, "send-doe ... done\n");
 
     append_pcap_packet_data(NULL, 0, request,
                                 request_size);
@@ -131,15 +134,18 @@ libspdm_return_t spdm_device_receive_message_pci_doe_ssd(void *spdm_context,
         return LIBSPDM_STATUS_RECEIVE_FAIL;
     }
 
+    if (m_log_file) fprintf(m_log_file, "recv-doe ...\n");
     /* read response data from PCI-DOE Read Mail Box Register */
     uint32_t* data = *response;
     *response_size = 0;
     while (m_pci_doe_reg_addr->status.native.data_obj_ready == 0x1) {
         *data = m_pci_doe_reg_addr->rmb.value;
+        if (m_log_file) fprintf(m_log_file, "\t <- 0x%08lX : %08X\n", *response_size, *data);
         data += 1;
         *response_size += sizeof(uint32_t);
         m_pci_doe_reg_addr->rmb.value = 0;
     }
+    if (m_log_file) fprintf(m_log_file, "recv-doe ... (%ld bytes) done\n", *response_size);
 
     append_pcap_packet_data(NULL, 0, *response,
                                 *response_size);
